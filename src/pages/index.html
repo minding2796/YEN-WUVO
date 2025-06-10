@@ -2,20 +2,230 @@
 <html lang="ko">
     <head>
         <meta charset="UTF-8">
-        <title>Title</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>주식 시뮬레이터</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+        <style>
+            :root {
+                --primary-color: #3498db;
+                --success-color: #2ecc71;
+                --danger-color: #e74c3c;
+                --light-color: #f8f9fa;
+                --dark-color: #343a40;
+            }
+
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family: 'Noto Sans KR', sans-serif;
+                line-height: 1.6;
+                color: var(--dark-color);
+                background-color: #f5f7fa;
+                padding: 2rem;
+                max-width: 1200px;
+                margin: 0 auto;
+            }
+
+            .container {
+                background-color: white;
+                border-radius: 12px;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+                padding: 2rem;
+                margin-bottom: 2rem;
+            }
+
+            .header {
+                text-align: center;
+                margin-bottom: 2rem;
+            }
+
+            .stock-price {
+                font-size: 2.2rem;
+                color: var(--primary-color);
+                font-weight: bold;
+                margin-bottom: 1.5rem;
+                text-align: center;
+            }
+
+            .stats {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 1rem;
+                margin-bottom: 2rem;
+            }
+
+            .stat-card {
+                background-color: var(--light-color);
+                border-radius: 8px;
+                padding: 1.2rem;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+                transition: transform 0.2s;
+            }
+
+            .stat-card:hover {
+                transform: translateY(-5px);
+            }
+
+            .stat-label {
+                font-size: 0.9rem;
+                color: #6c757d;
+                margin-bottom: 0.5rem;
+            }
+
+            .stat-value {
+                font-size: 1.5rem;
+                font-weight: bold;
+            }
+
+            .actions {
+                display: flex;
+                justify-content: center;
+                gap: 1rem;
+                margin-bottom: 2rem;
+                flex-wrap: wrap;
+            }
+
+            .btn {
+                padding: 0.8rem 1.5rem;
+                border: none;
+                border-radius: 6px;
+                font-weight: 500;
+                cursor: pointer;
+                font-size: 1rem;
+                transition: all 0.2s;
+                min-width: 120px;
+            }
+
+            .btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            }
+
+            .btn-primary {
+                background-color: var(--primary-color);
+                color: white;
+            }
+
+            .btn-success {
+                background-color: var(--success-color);
+                color: white;
+            }
+
+            .btn-danger {
+                background-color: var(--danger-color);
+                color: white;
+            }
+
+            .btn-light {
+                background-color: #e9ecef;
+                color: var(--dark-color);
+            }
+
+            .ranking-section {
+                background-color: white;
+                border-radius: 12px;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+                padding: 2rem;
+            }
+
+            .ranking-section h2 {
+                font-size: 1.8rem;
+                margin-bottom: 1.5rem;
+                color: var(--dark-color);
+                text-align: center;
+            }
+
+            .ranking-list {
+                list-style-position: inside;
+                padding-left: 1rem;
+            }
+
+            .ranking-list li {
+                padding: 0.8rem;
+                margin-bottom: 0.5rem;
+                border-radius: 6px;
+                background-color: var(--light-color);
+                font-weight: 500;
+            }
+
+            .ranking-list li:nth-child(1) {
+                background-color: gold;
+                color: #333;
+            }
+
+            .ranking-list li:nth-child(2) {
+                background-color: silver;
+                color: #333;
+            }
+
+            .ranking-list li:nth-child(3) {
+                background-color: #cd7f32; /* bronze */
+                color: white;
+            }
+
+            @media (max-width: 768px) {
+                body {
+                    padding: 1rem;
+                }
+
+                .stats {
+                    grid-template-columns: 1fr;
+                }
+
+                .actions {
+                    flex-direction: column;
+                    align-items: center;
+                }
+
+                .btn {
+                    width: 100%;
+                }
+            }
+        </style>
     </head>
     <body>
-        <h1 id="value"></h1>
-        <p id="money">현재 보유 자금: </p>
-        <p id="stonk">현재 보유 주식: </p>
-        <p id="net-worth">총 재산: </p>
-        <button onclick="buy(); return false;">매수</button>
-        <button onclick="sell(); return false;">매도</button>
-        <button onclick="st_data.name = prompt('이름을 입력하세요.', '익명'); return false;">이름 변경</button>
-        <button onclick="st_data.m += 500; return false;">노가다</button>
-        <h1>랭킹</h1>
-        <ol id="ranking">
-        </ol>
+        <div class="container">
+            <div class="header">
+                <h1>주식 시뮬레이터</h1>
+                <p>가상 주식을 거래하고 자산을 늘려보세요!</p>
+            </div>
+
+            <h2 class="stock-price" id="value"></h2>
+
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-label">현재 보유 자금</div>
+                    <div class="stat-value" id="money"></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">현재 보유 주식</div>
+                    <div class="stat-value" id="stonk"></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">총 재산</div>
+                    <div class="stat-value" id="net-worth"></div>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button class="btn btn-success" onclick="buy(); return false;">매수</button>
+                <button class="btn btn-danger" onclick="sell(); return false;">매도</button>
+                <button class="btn btn-primary" onclick="st_data.name = prompt('이름을 입력하세요.', '익명'); return false;">이름 변경</button>
+                <button class="btn btn-light" onclick="st_data.m += 500; return false;">노가다</button>
+            </div>
+        </div>
+
+        <div class="ranking-section">
+            <h2>랭킹</h2>
+            <ol id="ranking" class="ranking-list">
+            </ol>
+        </div>
         <script>
             const v = document.getElementById('value');
             const money = document.getElementById('money');
@@ -24,52 +234,197 @@
             const ranking = document.getElementById('ranking');
             let mps = 1050;
             let st_data;
-            if (document.cookie && document.cookie !== '') {
-                st_data = JSON.parse(document.cookie);
+
+            // 쿠키 관리 함수
+            function saveToCookie() {
+                const expires = new Date();
+                expires.setDate(expires.getDate() + 30); // 30일 유효
+                document.cookie = `userData=${JSON.stringify(st_data)};expires=${expires.toUTCString()};path=/`;
+            }
+
+            function loadFromCookie() {
+                const cookies = document.cookie.split(';');
+                for (let cookie of cookies) {
+                    const [name, value] = cookie.trim().split('=');
+                    if (name === 'userData' && value) {
+                        try {
+                            return JSON.parse(value);
+                        } catch (e) {
+                            console.error('쿠키 파싱 오류:', e);
+                            return null;
+                        }
+                    }
+                }
+                return null;
+            }
+
+            // 사용자 데이터 초기화
+            const savedData = loadFromCookie();
+            if (savedData) {
+                st_data = savedData;
             } else {
                 st_data = {
                     uuid: undefined,
                     name: prompt('이름을 입력하세요.', '익명'),
                     m: 1000000,
                     s: 0
+                };
+                saveToCookie();
+            }
+            // 숫자에 천 단위 콤마 추가하는 함수
+            function formatNumber(num) {
+                return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            }
+
+            // UI 업데이트 함수
+            function updateUI() {
+                v.innerText = `현재 주식 가격: ${formatNumber(mps)}원`;
+                money.innerText = formatNumber(st_data.m) + '원';
+                stonk.innerText = formatNumber(st_data.s) + '주';
+                net_worth.innerText = formatNumber(st_data.m + st_data.s * mps) + '원';
+            }
+
+            // 주식 가격과 사용자 데이터 업데이트
+            async function updateData() {
+                try {
+                    // UUID 확인
+                    if (st_data.uuid === undefined) {
+                        const uuidResponse = await fetch('uuid');
+                        st_data.uuid = await uuidResponse.text();
+                    }
+
+                    // 주식 가격 업데이트
+                    const stonkResponse = await fetch('stonk');
+                    const stonkData = await stonkResponse.json();
+                    mps = stonkData.value;
+
+                    // UI 업데이트
+                    updateUI();
+
+                    // 서버에 데이터 전송
+                    await fetch('submit', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(st_data)
+                    });
+
+                    // 쿠키 업데이트
+                    saveToCookie();
+                } catch (error) {
+                    console.error('데이터 업데이트 오류:', error);
                 }
             }
-            setInterval(async () => {
-                if (st_data.uuid === undefined) st_data.uuid = await (await fetch('uuid')).text();
-                mps = JSON.parse(await (await fetch('stonk')).text()).value;
-                v.innerText = `현재 주식 가격: ${mps}원`;
-                money.innerText = `현재 보유 자금: ${st_data.m}원`;
-                stonk.innerText = `현재 보유 주식: ${st_data.s}주`;
-                net_worth.innerText = `총 재산: ${st_data.m + st_data.s * mps}원`;
-                fetch('submit', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(st_data)
-                }).then(_ => {});
-            }, 1000);
-            setInterval(async () => {
-                document.cookie = JSON.stringify(st_data);
-                const r = JSON.parse(await (await fetch('ranking')).text());
-                r.sort((a, b) => (b.m + b.s * mps) - (a.m + a.s * mps));
-                while (ranking.childNodes.length > 0) ranking.removeChild(ranking.childNodes[0]);
-                for (let i = 0; i < r.length; i++) {
-                    const li = document.createElement('li');
-                    li.innerText = `${r[i].name}: ${r[i].m + r[i].s * mps}`;
-                    ranking.appendChild(li);
+
+            // 랭킹 업데이트 함수
+            async function updateRanking() {
+                try {
+                    const rankingResponse = await fetch('ranking');
+                    const rankingData = await rankingResponse.json();
+
+                    // 총 재산 기준으로 정렬
+                    rankingData.sort((a, b) => (b.m + b.s * mps) - (a.m + a.s * mps));
+
+                    // 랭킹 목록 초기화 및 새로 생성
+                    ranking.innerHTML = '';
+
+                    for (let i = 0; i < rankingData.length; i++) {
+                        const player = rankingData[i];
+                        const totalWorth = player.m + player.s * mps;
+
+                        const li = document.createElement('li');
+                        li.innerText = `${player.name}: ${formatNumber(totalWorth)}원`;
+
+                        // 내 랭킹 강조
+                        if (player.uuid === st_data.uuid) {
+                            li.style.fontWeight = 'bold';
+                            li.style.border = '2px solid var(--primary-color)';
+                        }
+
+                        ranking.appendChild(li);
+                    }
+                } catch (error) {
+                    console.error('랭킹 업데이트 오류:', error);
                 }
-            });
+            }
+
+            // 주기적 업데이트 설정
+            setInterval(updateData, 1000);
+            setInterval(updateRanking, 3000);
+            // 애니메이션 효과로 알림 표시하는 함수
+            function showNotification(message, isSuccess = true) {
+                const notification = document.createElement('div');
+                notification.className = `notification ${isSuccess ? 'success' : 'error'}`;
+                notification.textContent = message;
+                document.body.appendChild(notification);
+
+                // 스타일 추가
+                notification.style.position = 'fixed';
+                notification.style.bottom = '20px';
+                notification.style.right = '20px';
+                notification.style.padding = '15px 20px';
+                notification.style.borderRadius = '8px';
+                notification.style.color = 'white';
+                notification.style.fontWeight = 'bold';
+                notification.style.boxShadow = '0 4px 10px rgba(0,0,0,0.2)';
+                notification.style.zIndex = '1000';
+                notification.style.minWidth = '200px';
+                notification.style.textAlign = 'center';
+                notification.style.transform = 'translateY(100px)';
+                notification.style.opacity = '0';
+                notification.style.transition = 'all 0.3s ease-out';
+
+                if (isSuccess) {
+                    notification.style.backgroundColor = 'var(--success-color)';
+                } else {
+                    notification.style.backgroundColor = 'var(--danger-color)';
+                }
+
+                // 애니메이션 적용
+                setTimeout(() => {
+                    notification.style.transform = 'translateY(0)';
+                    notification.style.opacity = '1';
+                }, 10);
+
+                // 일정 시간 후 제거
+                setTimeout(() => {
+                    notification.style.transform = 'translateY(100px)';
+                    notification.style.opacity = '0';
+
+                    setTimeout(() => {
+                        document.body.removeChild(notification);
+                    }, 300);
+                }, 3000);
+            }
+
+            // 매수 기능 개선
             function buy() {
                 if (st_data.m >= mps) {
                     st_data.m -= mps;
                     st_data.s++;
+                    updateUI();
+                    saveToCookie();
+                    showNotification(`주식 1주를 ${formatNumber(mps)}원에 매수했습니다.`, true);
+                } else {
+                    showNotification('자금이 부족합니다!', false);
                 }
             }
+
+            // 매도 기능 개선
             function sell() {
                 if (st_data.s > 0) {
                     st_data.s--;
                     st_data.m += mps;
+                    updateUI();
+                    saveToCookie();
+                    showNotification(`주식 1주를 ${formatNumber(mps)}원에 매도했습니다.`, true);
+                } else {
+                    showNotification('보유한 주식이 없습니다!', false);
                 }
             }
+
+            // 초기 UI 업데이트
+            updateUI();
+            updateRanking();
         </script>
     </body>
 </html>

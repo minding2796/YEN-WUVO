@@ -5,6 +5,71 @@
         <title>Title</title>
     </head>
     <body>
-        <h1>// Todo: 여기 HTML 짜줄 사람 구함 (주식하는곳스럽게 짜주셈)</h1>
+        <h1 id="value"></h1>
+        <p id="money">현재 보유 자금: </p>
+        <p id="stonk">현재 보유 주식: </p>
+        <p id="net-worth">총 재산: </p>
+        <button onclick="buy(); return false;">매수</button>
+        <button onclick="sell(); return false;">매도</button>
+        <button onclick="st_data.name = prompt('이름을 입력하세요.', '익명'); return false;">이름 변경</button>
+        <button onclick="st_data.m += 500; return false;">노가다</button>
+        <h1>랭킹</h1>
+        <ol id="ranking">
+        </ol>
+        <script>
+            const v = document.getElementById('value');
+            const money = document.getElementById('money');
+            const stonk = document.getElementById('stonk');
+            const net_worth = document.getElementById('net-worth');
+            const ranking = document.getElementById('ranking');
+            let mps = 1050;
+            let st_data;
+            if (document.cookie && document.cookie !== '') {
+                st_data = JSON.parse(document.cookie);
+            } else {
+                st_data = {
+                    uuid: undefined,
+                    name: prompt('이름을 입력하세요.', '익명'),
+                    m: 1000000,
+                    s: 0
+                }
+            }
+            setInterval(async () => {
+                if (st_data.uuid === undefined) st_data.uuid = await (await fetch('uuid')).text();
+                mps = JSON.parse(await (await fetch('stonk')).text()).value;
+                v.innerText = `현재 주식 가격: ${mps}원`;
+                money.innerText = `현재 보유 자금: ${st_data.m}원`;
+                stonk.innerText = `현재 보유 주식: ${st_data.s}주`;
+                net_worth.innerText = `총 재산: ${st_data.m + st_data.s * mps}원`;
+                fetch('submit', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(st_data)
+                }).then(_ => {});
+            }, 1000);
+            setInterval(async () => {
+                document.cookie = JSON.stringify(st_data);
+                const r = JSON.parse(await (await fetch('ranking')).text());
+                r.sort((a, b) => (b.m + b.s * mps) - (a.m + a.s * mps));
+                while (ranking.childNodes.length > 0) ranking.removeChild(ranking.childNodes[0]);
+                for (let i = 0; i < r.length; i++) {
+                    const li = document.createElement('li');
+                    li.innerText = `${r[i].name}: ${r[i].m + r[i].s * mps}`;
+                    ranking.appendChild(li);
+                }
+            });
+            function buy() {
+                if (st_data.m >= mps) {
+                    st_data.m -= mps;
+                    st_data.s++;
+                }
+            }
+            function sell() {
+                if (st_data.s > 0) {
+                    st_data.s--;
+                    st_data.m += mps;
+                }
+            }
+        </script>
     </body>
 </html>

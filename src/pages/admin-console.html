@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>서버 관리자 콘솔</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --success-color: #2ecc71;
+            --danger-color: #e74c3c;
+            --warning-color: #f39c12;
+            --light-color: #f8f9fa;
+            --dark-color: #343a40;
+            --gray-color: #6c757d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            line-height: 1.6;
+            color: var(--dark-color);
+            background-color: #f5f7fa;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .container {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 1rem;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            font-size: 1.8rem;
+        }
+
+        .auth-section {
+            background-color: var(--light-color);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+
+        .input-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        input[type="password"] {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .console-section {
+            margin-bottom: 2rem;
+        }
+
+        #codeEditor {
+            width: 100%;
+            min-height: 200px;
+            font-family: monospace;
+            padding: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            font-size: 14px;
+            line-height: 1.5;
+            tab-size: 4;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .btn {
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.2s;
+            min-width: 120px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .btn-light {
+            background-color: var(--light-color);
+            color: var(--dark-color);
+        }
+
+        .output-section {
+            margin-top: 2rem;
+        }
+
+        #output {
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 1rem;
+            min-height: 150px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .success {
+            color: var(--success-color);
+        }
+
+        .error {
+            color: var(--danger-color);
+        }
+
+        .warning {
+            color: var(--warning-color);
+        }
+
+        .info {
+            color: var(--primary-color);
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>서버 관리자 콘솔</h1>
+            <div>
+                <span id="statusIndicator" class="warning">인증 필요</span>
+            </div>
+        </div>
+
+        <div class="auth-section">
+            <div class="input-group">
+                <label for="password">관리자 비밀번호</label>
+                <input type="password" id="password" placeholder="관리자 비밀번호를 입력하세요">
+            </div>
+            <button id="authButton" class="btn btn-primary">인증</button>
+        </div>
+
+        <div class="console-section">
+            <label for="codeEditor">JavaScript 코드 입력</label>
+            <textarea id="codeEditor" placeholder="실행할 서버 사이드 JavaScript 코드를 입력하세요" disabled></textarea>
+
+            <div class="button-group">
+                <button id="executeButton" class="btn btn-primary" disabled>코드 실행</button>
+                <button id="clearButton" class="btn btn-light" disabled>코드 초기화</button>
+            </div>
+        </div>
+
+        <div class="output-section">
+            <label for="output">실행 결과</label>
+            <div id="output">실행 결과가 여기에 표시됩니다.</div>
+        </div>
+    </div>
+
+    <script>
+        const passwordInput = document.getElementById('password');
+        const authButton = document.getElementById('authButton');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const codeEditor = document.getElementById('codeEditor');
+        const executeButton = document.getElementById('executeButton');
+        const clearButton = document.getElementById('clearButton');
+        const output = document.getElementById('output');
+
+        let isAuthenticated = false;
+        let currentPassword = '';
+
+        // 인증 상태 업데이트 함수
+        function updateAuthStatus(status, message) {
+            isAuthenticated = status;
+            statusIndicator.textContent = message;
+            statusIndicator.className = status ? 'success' : 'warning';
+
+            // UI 상태 업데이트
+            codeEditor.disabled = !status;
+            executeButton.disabled = !status;
+            clearButton.disabled = !status;
+
+            if (status) {
+                authButton.textContent = '인증됨';
+                authButton.disabled = true;
+            }
+        }
+
+        // 인증 함수
+        authButton.addEventListener('click', () => {
+            const password = passwordInput.value.trim();
+            if (!password) {
+                alert('비밀번호를 입력해주세요.');
+                return;
+            }
+
+            currentPassword = password;
+
+            // 간단한 테스트 실행으로 인증 확인
+            executeCode('"인증 성공"')
+                .then(result => {
+                    if (result.success) {
+                        updateAuthStatus(true, '인증됨');
+                    } else {
+                        updateAuthStatus(false, '인증 실패');
+                        printOutput('인증 실패: ' + result.error, 'error');
+                    }
+                })
+                .catch(error => {
+                    updateAuthStatus(false, '인증 실패');
+                    printOutput('인증 실패: ' + error.message, 'error');
+                });
+        });
+
+        // 코드 실행 함수
+        executeButton.addEventListener('click', () => {
+            const code = codeEditor.value.trim();
+            if (!code) {
+                alert('실행할 코드를 입력해주세요.');
+                return;
+            }
+
+            executeButton.disabled = true;
+            executeButton.textContent = '실행 중...';
+            printOutput('코드 실행 중...', 'info');
+
+            executeCode(code)
+                .then(result => {
+                    executeButton.disabled = false;
+                    executeButton.textContent = '코드 실행';
+
+                    if (result.success) {
+                        printOutput('실행 결과:', 'success');
+                        printOutput(formatResult(result.result), '');
+                    } else {
+                        printOutput('실행 오류:', 'error');
+                        printOutput(result.error, 'error');
+                        if (result.stack) {
+                            printOutput('스택 트레이스:', 'error');
+                            printOutput(result.stack, '');
+                        }
+                    }
+                })
+                .catch(error => {
+                    executeButton.disabled = false;
+                    executeButton.textContent = '코드 실행';
+                    printOutput('요청 오류:', 'error');
+                    printOutput(error.message, 'error');
+                });
+        });
+
+        // 코드 초기화 함수
+        clearButton.addEventListener('click', () => {
+            codeEditor.value = '';
+        });
+
+        // 코드 실행 API 호출 함수
+        async function executeCode(code) {
+            const response = await fetch('/execute-code', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    code,
+                    password: currentPassword
+                })
+            });
+
+            return await response.json();
+        }
+
+        // 결과 포맷팅 함수
+        function formatResult(result) {
+            if (result === null) return 'null';
+            if (result === undefined) return 'undefined';
+
+            try {
+                return JSON.stringify(result, null, 2);
+            } catch (error) {
+                return String(result);
+            }
+        }
+
+        // 출력 함수
+        function printOutput(text, className) {
+            if (className === 'clear') {
+                output.innerHTML = '';
+                return;
+            }
+
+            const element = document.createElement('div');
+            element.textContent = text;
+            if (className) element.className = className;
+            output.appendChild(element);
+
+            // 스크롤을 아래로 이동
+            output.scrollTop = output.scrollHeight;
+        }
+
+        // 예제 코드
+        const exampleCodes = [
+            `// 주식 가격 변경
+stonk.value = 50000;`,
+
+            `// 특정 사용자 자금 수정
+db.run("UPDATE users SET money = 여기에 자금 입력 WHERE uuid = '여기에 uuid 입력'");`
+        ];
+
+        // 예제 코드 설정
+        const randomExample = exampleCodes[Math.floor(Math.random() * exampleCodes.length)];
+        codeEditor.value = randomExample;
+    </script>
+</body>
+</html>

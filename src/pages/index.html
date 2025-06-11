@@ -214,10 +214,10 @@
             </div>
 
             <div class="actions">
-                <button class="btn btn-success" onclick="buy(); return false;">매수</button>
-                <button class="btn btn-danger" onclick="sell(); return false;">매도</button>
-                <button class="btn btn-primary" onclick="st_data.name = prompt('이름을 입력하세요.', '익명'); return false;">이름 변경</button>
-                <button class="btn btn-light" onclick="st_data.m += 500; return false;">노가다</button>
+                <button class="btn btn-success" id="buyBtn" onclick="buy(); return false;">매수</button>
+                <button class="btn btn-danger" id="sellBtn" onclick="sell(); return false;">매도</button>
+                <button class="btn btn-primary" id="nameBtn" onclick="changeName(); return false;">이름 변경</button>
+                <button class="btn btn-light" id="workBtn" onclick="work(); return false;">노가다(10000원)</button>
             </div>
         </div>
 
@@ -225,6 +225,9 @@
             <h2>랭킹</h2>
             <ol id="ranking" class="ranking-list">
             </ol>
+            <div style="text-align: center; margin-top: 20px; font-size: 0.8rem;">
+                <a href="/admin-console" style="color: #ccc; text-decoration: none;">관리자 콘솔</a>
+            </div>
         </div>
         <script>
             const v = document.getElementById('value');
@@ -232,23 +235,24 @@
             const stonk = document.getElementById('stonk');
             const net_worth = document.getElementById('net-worth');
             const ranking = document.getElementById('ranking');
-            let mps = 1050;
+            let mps = 6E50;
             let st_data;
 
-            // 쿠키 관리 함수
+            // 쿠키 관리 함수 - UUID만 저장
             function saveToCookie() {
                 const expires = new Date();
                 expires.setDate(expires.getDate() + 30); // 30일 유효
-                document.cookie = `userData=${JSON.stringify(st_data)};expires=${expires.toUTCString()};path=/`;
+                // 보안을 위해 UUID만 쿠키에 저장 
+                document.cookie = `userUUID=${st_data.uuid};expires=${expires.toUTCString()};path=/`;
             }
 
             function loadFromCookie() {
                 const cookies = document.cookie.split(';');
                 for (let cookie of cookies) {
                     const [name, value] = cookie.trim().split('=');
-                    if (name === 'userData' && value) {
+                    if (name === 'userUUID' && value) {
                         try {
-                            return JSON.parse(value);
+                            return { uuid: value };
                         } catch (e) {
                             console.error('쿠키 파싱 오류:', e);
                             return null;
@@ -258,18 +262,15 @@
                 return null;
             }
 
-            // 사용자 데이터 초기화
+            // 사용자 데이터 초기화 - UUID만 저장하고 나머지는 서버에서 관리
             const savedData = loadFromCookie();
-            if (savedData) {
-                st_data = savedData;
+            if (savedData && savedData.uuid) {
+                st_data = { uuid: savedData.uuid };
             } else {
                 st_data = {
                     uuid: undefined,
-                    name: prompt('이름을 입력하세요.', '익명'),
-                    m: 1000000,
-                    s: 0
+                    name: '익명'
                 };
-                saveToCookie();
             }
             // 숫자에 천 단위 콤마 추가하는 함수
             function formatNumber(num) {
@@ -287,10 +288,34 @@
             // 주식 가격과 사용자 데이터 업데이트
             async function updateData() {
                 try {
-                    // UUID 확인
+                    // UUID 확인 및 사용자 초기화
                     if (st_data.uuid === undefined) {
                         const uuidResponse = await fetch('uuid');
-                        st_data.uuid = await uuidResponse.text();
+                        const uuid = await uuidResponse.text();
+
+                        // 신규 사용자 초기화
+                        const initResponse = await fetch('initUser', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                uuid: uuid,
+                                name: '익명'
+                            })
+                        });
+
+                        const initData = await initResponse.json();
+                        if (initData.success) {
+                            st_data = initData.userData;
+                            saveToCookie();
+                        }
+                    } else {
+                        // 기존 사용자 데이터 조회
+                        const userResponse = await fetch(`user/${st_data.uuid}`);
+                        const userData = await userResponse.json();
+
+                        if (userData.success) {
+                            st_data = userData.userData;
+                        }
                     }
 
                     // 주식 가격 업데이트
@@ -300,13 +325,6 @@
 
                     // UI 업데이트
                     updateUI();
-
-                    // 서버에 데이터 전송
-                    await fetch('submit', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify(st_data)
-                    });
 
                     // 쿠키 업데이트
                     saveToCookie();
@@ -318,21 +336,25 @@
             // 랭킹 업데이트 함수
             async function updateRanking() {
                 try {
+                    if (!st_data || !st_data.uuid) return; // UUID가 없으면 업데이트 안함
+
                     const rankingResponse = await fetch('ranking');
                     const rankingData = await rankingResponse.json();
 
                     // 총 재산 기준으로 정렬
-                    rankingData.sort((a, b) => (b.m + b.s * mps) - (a.m + a.s * mps));
+                    rankingData.sort((a, b) => (b.money + b.stocks * mps) - (a.money + a.stocks * mps));
 
                     // 랭킹 목록 초기화 및 새로 생성
                     ranking.innerHTML = '';
 
                     for (let i = 0; i < rankingData.length; i++) {
                         const player = rankingData[i];
-                        const totalWorth = player.m + player.s * mps;
+                        if (!player || !player.uuid) continue; // 유효하지 않은 데이터 스킵
+
+                        const totalWorth = player.money + player.stocks * mps;
 
                         const li = document.createElement('li');
-                        li.innerText = `${player.name}: ${formatNumber(totalWorth)}원`;
+                        li.innerText = `${player.name || '익명'}: ${formatNumber(totalWorth)}원`;
 
                         // 내 랭킹 강조
                         if (player.uuid === st_data.uuid) {
@@ -396,29 +418,195 @@
                 }, 3000);
             }
 
-            // 매수 기능 개선
-            function buy() {
-                if (st_data.m >= mps) {
-                    st_data.m -= mps;
-                    st_data.s++;
-                    updateUI();
-                    saveToCookie();
-                    showNotification(`주식 1주를 ${formatNumber(mps)}원에 매수했습니다.`, true);
-                } else {
-                    showNotification('자금이 부족합니다!', false);
+            // 서버 기반 매수 기능
+            async function buy() {
+                try {
+                    const buyBtn = document.getElementById('buyBtn');
+                    buyBtn.disabled = true; // 요청 중 버튼 비활성화
+
+                    const response = await fetch('buy', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ uuid: st_data.uuid })
+                    });
+
+                    const result = await response.json();
+
+                    // 응답으로 받은 사용자 데이터로 업데이트 (직접 조작 방지)
+                    if (result.userData) {
+                        st_data = result.userData;
+                        updateUI();
+                        saveToCookie();
+                    }
+
+                    if (result.success) {
+                        showNotification(result.message, true);
+                    } else {
+                        showNotification(result.message, false);
+                    }
+
+                    buyBtn.disabled = false; // 버튼 다시 활성화
+                } catch (error) {
+                    console.error('매수 처리 오류:', error);
+                    showNotification('매수 처리 중 오류가 발생했습니다.', false);
+                    document.getElementById('buyBtn').disabled = false; // 오류 시 버튼 활성화
                 }
             }
 
-            // 매도 기능 개선
-            function sell() {
-                if (st_data.s > 0) {
-                    st_data.s--;
-                    st_data.m += mps;
-                    updateUI();
-                    saveToCookie();
-                    showNotification(`주식 1주를 ${formatNumber(mps)}원에 매도했습니다.`, true);
-                } else {
-                    showNotification('보유한 주식이 없습니다!', false);
+            // 서버 기반 매도 기능
+            async function sell() {
+                try {
+                    const sellBtn = document.getElementById('sellBtn');
+                    sellBtn.disabled = true; // 요청 중 버튼 비활성화
+
+                    const response = await fetch('sell', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ uuid: st_data.uuid })
+                    });
+
+                    const result = await response.json();
+
+                    // 응답으로 받은 사용자 데이터로 업데이트 (직접 조작 방지)
+                    if (result.userData) {
+                        st_data = result.userData;
+                        updateUI();
+                        saveToCookie();
+                    }
+
+                    if (result.success) {
+                        showNotification(result.message, true);
+                    } else {
+                        showNotification(result.message, false);
+                    }
+
+                    sellBtn.disabled = false; // 버튼 다시 활성화
+                } catch (error) {
+                    console.error('매도 처리 오류:', error);
+                    showNotification('매도 처리 중 오류가 발생했습니다.', false);
+                    document.getElementById('sellBtn').disabled = false; // 오류 시 버튼 활성화
+                }
+            }
+
+            // 서버 기반 노가다(일하기) 기능
+            let workCooldownTimer = null;
+            const workButton = document.getElementById('workBtn');
+
+            async function work() {
+                try {
+                    // 버튼 비활성화 상태에서는 함수 실행 중지
+                    if (workButton.disabled) return;
+
+                    // 버튼 일시적 비활성화 (서버 응답 대기)
+                    workButton.disabled = true;
+
+                    const response = await fetch('work', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ uuid: st_data.uuid })
+                    });
+
+                    const result = await response.json();
+
+                    // 응답으로 받은 사용자 데이터로 업데이트 (직접 조작 방지)
+                    if (result.userData) {
+                        st_data = result.userData;
+                        updateUI();
+                        saveToCookie();
+                    }
+
+                    if (result.success) {
+                        showNotification(result.message, true);
+
+                        // 쿨다운 타이머 설정
+                        startWorkCooldown(result.cooldown.total);
+                    } else {
+                        showNotification(result.message, false);
+
+                        // 남은 쿨다운 시간이 있으면 타이머 설정
+                        if (result.cooldown && result.cooldown.remaining > 0) {
+                            startWorkCooldown(result.cooldown.remaining);
+                        } else {
+                            // 쿨다운이 없는 다른 오류인 경우 버튼 다시 활성화
+                            workButton.disabled = false;
+                        }
+                    }
+                } catch (error) {
+                    console.error('노가다 처리 오류:', error);
+                    showNotification('노가다 처리 중 오류가 발생했습니다.', false);
+                    workButton.disabled = false; // 오류 발생 시 버튼 활성화
+                }
+            }
+
+            // 노가다 버튼 쿨다운 타이머 설정 함수
+            function startWorkCooldown(duration) {
+                // 기존 타이머가 있으면 제거
+                if (workCooldownTimer) {
+                    clearInterval(workCooldownTimer);
+                }
+
+                // 버튼 비활성화 상태 유지
+                workButton.disabled = true;
+
+                // 남은 시간 계산 (초 단위 올림)
+                let remainingTime = Math.ceil(duration / 1000);
+
+                // 버튼 텍스트 업데이트
+                workButton.textContent = `대기 중... (${remainingTime}초)`;
+
+                // 타이머 설정
+                workCooldownTimer = setInterval(() => {
+                    remainingTime--;
+
+                    if (remainingTime <= 0) {
+                        // 타이머 종료
+                        clearInterval(workCooldownTimer);
+                        workButton.disabled = false;
+                        workButton.textContent = '노가다(10000원)';
+                        workCooldownTimer = null;
+                    } else {
+                        // 남은 시간 업데이트
+                        workButton.textContent = `대기 중... (${remainingTime}초)`;
+                    }
+                }, 1000);
+            }
+
+            // 서버 기반 이름 변경 기능
+            async function changeName() {
+                const newName = prompt('이름을 입력하세요.', st_data.name || '익명');
+
+                if (!newName) return;
+
+                try {
+                    const nameBtn = document.getElementById('nameBtn');
+                    nameBtn.disabled = true; // 요청 중 버튼 비활성화
+
+                    const response = await fetch('changeName', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            uuid: st_data.uuid,
+                            name: newName
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        // 서버에서 반환된 사용자 데이터만 신뢰
+                        st_data = result.userData;
+                        updateUI();
+                        saveToCookie();
+                        showNotification('이름이 변경되었습니다.', true);
+                    } else {
+                        showNotification(result.message, false);
+                    }
+
+                    nameBtn.disabled = false; // 버튼 다시 활성화
+                } catch (error) {
+                    console.error('이름 변경 오류:', error);
+                    showNotification('이름 변경 중 오류가 발생했습니다.', false);
+                    document.getElementById('nameBtn').disabled = false; // 오류 시 버튼 활성화
                 }
             }
 

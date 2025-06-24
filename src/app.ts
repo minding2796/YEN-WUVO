@@ -29,10 +29,10 @@ let db: Database;
 
     await db.exec(`
         CREATE TABLE IF NOT EXISTS users (
-            uuid TEXT PRIMARY KEY,
-            name TEXT,
-            money INTEGER,
-            stocks INTEGER,
+            uuid TEXT PRIMARY KEY NOT NULL,
+            name TEXT default '익명',
+            money INTEGER default 1000000,
+            stocks INTEGER default 0,
             last_work_time INTEGER
         )
     `);

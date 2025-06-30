@@ -307,7 +307,7 @@ app.post('/execute-code', (req: Request, res: Response): any => {
     const { code, password } = req.body;
 
     // 관리자 비밀번호 검증
-    if (password !== 'admin123') {
+    if (password !== process.env.ADMIN_PASSWORD) { // 이제 admin123 아니다 이인간들아
         return res.status(401).json({ success: false, message: '관리자 인증 실패' });
     }
 
